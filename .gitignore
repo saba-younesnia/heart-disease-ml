@@ -32,3 +32,7 @@ htmlcov/
 
 # Logs
 *.log
+
+# Generated data and model artifacts
+data/processed/
+*.joblib
