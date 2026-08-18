@@ -5,14 +5,15 @@ The split is performed before fitting any preprocessing component
 to prevent data leakage from the test set.
 """
 
-import pandas as pd
+import logging
 
+import pandas as pd
 from sklearn.model_selection import train_test_split
 
+from src.config import TARGET_COLUMN, TEST_SIZE, RANDOM_STATE
+from src.preprocessing import split_features_target, load_data
 
-TARGET_COLUMN = "num"
-TEST_SIZE = 0.20
-RANDOM_STATE = 42
+logger = logging.getLogger(__name__)
 
 
 def split_data(
@@ -24,41 +25,11 @@ def split_data(
     """
     Split the dataset into stratified training and test sets.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Complete input dataset.
-
-    target_column : str
-        Name of the target column.
-
-    test_size : float
-        Proportion of the dataset assigned to the test set.
-
-    random_state : int
-        Seed used to make the split reproducible.
-
-    Returns
-    -------
-    X_train : pd.DataFrame
-        Training features.
-
-    X_test : pd.DataFrame
-        Test features.
-
-    y_train : pd.Series
-        Training target.
-
-    y_test : pd.Series
-        Test target.
+    Feature/target separation (including dropping id columns) is
+    delegated to `split_features_target` so this logic exists in
+    exactly one place in the codebase.
     """
-    if target_column not in df.columns:
-        raise ValueError(
-            f"Target column '{target_column}' was not found."
-        )
-
-    X = df.drop(columns=[target_column])
-    y = df[target_column]
+    X, y = split_features_target(df, target_column=target_column)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
@@ -68,18 +39,21 @@ def split_data(
         stratify=y,
     )
 
+    logger.info(
+        "Split data into %d train / %d test samples (stratified).",
+        len(X_train),
+        len(X_test),
+    )
+
     return X_train, X_test, y_train, y_test
 
 
 if __name__ == "__main__":
-    from src.preprocessing import load_data
+    logging.basicConfig(level=logging.INFO)
 
     df = load_data()
-
     X_train, X_test, y_train, y_test = split_data(df)
 
-    print("Data split completed successfully.")
-    print(f"Training samples: {len(X_train)}")
-    print(f"Test samples: {len(X_test)}")
-    print(f"Training target distribution:\n{y_train.value_counts().sort_index()}")
-    print(f"Test target distribution:\n{y_test.value_counts().sort_index()}")
+    logger.info("Data split completed successfully.")
+    logger.info("Training target distribution:\n%s", y_train.value_counts().sort_index())
+    logger.info("Test target distribution:\n%s", y_test.value_counts().sort_index())
